@@ -16,14 +16,14 @@ A(3)->C(4)->B(1)
 
 The elves need to know:
 1. The longest possible path (in total minutes) any component takes
-2. Which stations are "bottlenecks" (stations that appear in more than 50% of paths)
+2. Which stations are "bottlenecks" (most used stations)
 
 For the example above:
 - Path 1 takes 10 minutes (5 + 3 + 2)
 - Path 2 takes 12 minutes (4 + 6 + 2)
 - Path 3 takes 8 minutes (3 + 4 + 1)
 - The longest path is 12 minutes
-- Station B and D appear in 2/3 paths, making B a bottleneck
+- Station B and D appear in the most paths, making B and D bottlenecks
 
 What is the sum of the longest path (in minutes) and the number of bottleneck stations?
 
