@@ -183,7 +183,7 @@ class Solver():
             solved_sum += valid_order[idx]
         print(f'Solved 1: {solved_sum}')
 
-    # PART 2
+    # PART TWO
     def invalid_orders(self) -> PageOrders:
         invalid_orders: PageOrders = []
         for page_order in self.page_orders:
