@@ -151,6 +151,7 @@ class Solver():
         self.page_orders: PageOrders = Solver._page_orders(raw_sections[1])
 
     # Public Methods
+    # PART ONE
     def check(self, page_order: PageOrder, page_rule: PageRule) -> Optional[bool]:
         try:
             rule_before_idx: int = page_order.index(page_rule[0])
@@ -175,13 +176,44 @@ class Solver():
                 valid_orders.append(page_order)
         return valid_orders
 
-    def solve(self) -> None:
+    def solve_part_one(self) -> None:
         solved_sum = 0
-        valid_orders: PageOrders = self.valid_orders()
-        for valid_order in valid_orders:
+        for valid_order in self.valid_orders():
             idx = len(valid_order) // 2
             solved_sum += valid_order[idx]
-        print(f'Solved: {solved_sum}')
+        print(f'Solved 1: {solved_sum}')
+
+    # PART 2
+    def invalid_orders(self) -> PageOrders:
+        invalid_orders: PageOrders = []
+        for page_order in self.page_orders:
+            if not self.validate(page_order):
+                invalid_orders.append(page_order)
+        return invalid_orders
+
+    def fix_order(self, page_order: PageOrder) -> None:
+        made_change = True
+        while made_change:
+            made_change = False
+            for page_rule in self.page_rules:
+                try:
+                    rule_before_idx: int = page_order.index(page_rule[0])
+                    rule_after_idx : int = page_order.index(page_rule[1])
+                    if rule_before_idx > rule_after_idx:
+                        page_order[rule_before_idx],page_order[rule_after_idx] = page_order[rule_after_idx],page_order[rule_before_idx]
+                        made_change = True
+                        break
+                except ValueError:
+                    continue
+
+    def solve_part_two(self) -> None:
+        solved_sum = 0
+        invalid_orders: PageOrders = self.invalid_orders()
+        for invalid_order in invalid_orders:
+            self.fix_order(invalid_order)
+            idx = len(invalid_order) // 2
+            solved_sum += invalid_order[idx]
+        print(f'Solved 2: {solved_sum}')
 
     # Private Methods
     @staticmethod
@@ -204,10 +236,12 @@ if __name__ == "__main__":
     with open('input.txt','r') as file:
         print("Initialize Input...")
         input = file.read().strip('\n')
+        # input = DEFAULT_INPUT
         print(input,end="\n\n")
 
         print("Initialize Solver...")
         solver: Solver = Solver(input)
         print(solver,end="\n\n")
 
-        solver.solve()
+        solver.solve_part_one()
+        solver.solve_part_two()
