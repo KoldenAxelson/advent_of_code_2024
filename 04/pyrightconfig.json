@@ -1,0 +1,7 @@
+{
+  "include": ["."],
+  "exclude": ["**/node_modules", "**/__pycache__"],
+  "reportOptionalSubscript": "none",
+  "reportOptionalMemberAccess": "none",
+  "pythonVersion": "3.13"
+}
