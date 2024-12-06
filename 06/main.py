@@ -1,8 +1,10 @@
 # Imports
+import sys
 from enum import Enum
-from time import sleep
+#from time import sleep
+from copy import deepcopy
 from itertools import product
-from typing import TypeAlias, List, Tuple, Optional, Any, cast
+from typing import TypeAlias, List, Tuple, Set, Optional, Any, cast
 
 # Types
 RawGameBoard  : TypeAlias = str
@@ -13,22 +15,26 @@ Vector        : TypeAlias = Tuple[int,int]
 PlayerData    : TypeAlias = Optional[Tuple['Player',Position]]
 Task          : TypeAlias = bool
 
+# Exceptions
+class RepeatRock(Exception):
+    pass
+class EndOfGame(Exception):
+    pass
+
 # Global Constants
 ROCK_CHAR    : str          = '#'
 EMPTY_CHAR   : str          = '.'
 VISITED_CHAR : str          = 'X'
-STEP_DELAY   : float        = 0.5
+STEP_DELAY   : float        = 0.2
 DEFAULT_INPUT: RawGameBoard = '''
-....#.....
-.........#
-..........
-..#.......
-.......#..
-..........
-.#..^.....
-........#.
-#.........
-......#...
+..#.....
+.......#
+..^.....
+......#.
+......#.
+......#.
+......#.
+......#.
 '''.strip("\n")
 
 # Helpers (Structs, Methods, Etc)
@@ -65,6 +71,8 @@ class Cell():
 class Rock(Cell):
     value    : str  = ROCK_CHAR
     can_visit: bool = False
+    def __init__(self) -> None:
+        self.directions: Set[Direction] = set()
 
 class Player(Cell):
     has_been_visited: bool = True
@@ -79,6 +87,7 @@ class Solver():
         raw_game_matrix = Solver._raw_game_matrix(raw_game_board)
         self.game_board = Solver._game_board(raw_game_matrix)
         player_data     = Solver._player_position(self.game_board)
+        self.obstruction_point: int = 0
         if player_data is not None :
             self.player,self.position = player_data
     def __str__(self) -> str:
@@ -92,11 +101,21 @@ class Solver():
             case Direction.EAST : vector =  0, 1
             case Direction.WEST : vector =  0,-1
         try:
+            rows,cols = len(self.game_board),len(self.game_board[0])
             while self.game_board[self.position[0]+vector[0]][self.position[1]+vector[1]].can_visit:
                 self.game_board[self.position[0]][self.position[1]] = Cell(True)
                 self.game_board[self.position[0]+vector[0]][self.position[1]+vector[1]] = self.player
                 self.position = self.position[0]+vector[0], self.position[1]+vector[1]
-        except IndexError:
+                x,y = self.position[0]+vector[0],self.position[1]+vector[1]
+                if isinstance(self.game_board[x][y],Rock):
+                    rock: Rock = cast(Rock,self.game_board[x][y])
+                    if self.player.direction in rock.directions:
+                        self.obstruction_point += 1
+                        raise RepeatRock
+                    rock.directions.add(self.player.direction)
+                if not (0 <= x < rows) or not (0 <= y < cols):
+                    raise EndOfGame
+        except (IndexError, EndOfGame,RepeatRock):
             return False
         match self.player.direction:
             case Direction.NORTH: self.player.value = Direction.EAST.value ; self.player.direction = Direction.EAST
@@ -110,14 +129,44 @@ class Solver():
         while running:
             running = self.step()
             count += 1
-            print(f'Step {count}...')
-            print(self)
-            sleep(STEP_DELAY)
         rows,cols,count = len(self.game_board),len(self.game_board[0]),0
         for row,col in product(range(rows),range(cols)):
             if self.game_board[row][col].has_been_visited:
                 count += 1
         print(f'Solution: {count} visited cells')
+    def solve_part_two(self) -> None:
+        rows, cols = len(self.game_board), len(self.game_board[0])
+        total_cells = rows * cols
+        current = 0
+        cached_player: Player = deepcopy(self.player)
+        cached_position: Position = deepcopy(self.position)
+        print('\n' * 4)
+        for row, col in product(range(rows), range(cols)):
+            current += 1
+            cell = self.game_board[row][col]
+            progress = int(50 * current / total_cells)  # 50 character progress bar
+            percentage = (current / total_cells) * 100
+            status_lines = [
+                f'\rProgress: [{"|" * progress}{" " * (50-progress)}] {percentage:.1f}%',
+                f'Testing position: ({row}, {col})',
+                f'Cells checked: {current}/{total_cells}',
+                f'Obstruction Points Found: {self.obstruction_point}'
+            ]
+            sys.stdout.write('\033[F' * 4)
+            for line in status_lines:
+                sys.stdout.write('\033[K' + line + '\n')
+            sys.stdout.flush()
+            if isinstance(cell, Player) or isinstance(cell, Rock):
+                continue
+            cached_game: GameBoard = deepcopy(self.game_board)
+            self.game_board[row][col] = Rock()
+            while self.step():
+                   pass
+            self.player = cached_player
+            self.position = cached_position
+            self.game_board = cached_game
+        print('\n' * 4)
+        print(f'Solution: {self.obstruction_point}')
     # Private Methods
     @staticmethod
     def _raw_game_matrix(raw_game_board: RawGameBoard) -> RawGameMatrix:
@@ -152,11 +201,13 @@ class Solver():
 if __name__ == "__main__":
     print('Initialize Input...')
     input: RawGameBoard = DEFAULT_INPUT
-    # input = input_file() # If we're using the official input
+    input = input_file() # If we're using the official input
     print(input,end='\n\n')
 
     print("Initialize Solver..")
     solver: Solver = Solver(input)
     print(solver,end='\n\n')
 
-    solver.solve_part_one()
+    # Run one or the other...
+    #solver.solve_part_one()
+    solver.solve_part_two()
