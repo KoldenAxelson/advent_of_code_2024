@@ -69,6 +69,12 @@ MXMXAXMASX
 def generate_raw_crossword() -> RawCrossword:
     return DEFAULT_INPUT
 
+def get_official_crossword() -> RawCrossword:
+    get_official_crossword: RawCrossword = ""
+    with open('input.txt','r') as file:
+        get_official_crossword = file.read().strip('\n')
+    return get_official_crossword
+
 def in_matrix_bounds(row,col,rows,cols) -> bool:
     return 0 <= row < rows and 0 <= col < cols
 
@@ -194,7 +200,8 @@ class Crossword():
 # Execute
 if __name__ == "__main__":
     print("Raw Crossword...")
-    raw_crossword = generate_raw_crossword()
+    # raw_crossword = generate_raw_crossword()
+    raw_crossword = get_official_crossword()
     print(raw_crossword,end='\n')
 
     print("Crossword Solver")
