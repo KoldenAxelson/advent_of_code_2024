@@ -2,7 +2,9 @@
 import sys
 from enum import Enum
 from itertools import product
-from typing import TypeAlias, List, Tuple, Dict
+from typing import TypeAlias, List, Tuple, Dict, Iterator
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 
 # Types
 InputData : TypeAlias = str
@@ -57,7 +59,6 @@ def remove_buffer(stats: Dict[str,str]) -> None:
     sys.stdout.write('\033[J')
 
 def show_stats(stats: Dict[str,str]) -> None:
-    # Clear the entire section first
     sys.stdout.write('\033[F' * (len(stats) + 10))
     sys.stdout.write('\033[J')
     for k,v in stats.items():
@@ -87,7 +88,7 @@ class Operation(Enum):
         return [Operation.ADD, Operation.MUL, Operation.CON]
     @staticmethod
     def ALL() -> Operations:
-        return Operation.P1() # Set ALL to Current Part
+        return Operation.P2() # Set ALL to Current Part
 
 class Problem():
     # Properties
@@ -105,7 +106,7 @@ class Problem():
         valid_operations = Problem._valid_operations(self.solution, self.equation)
         self.is_valid = len(valid_operations) > 0
         if self.is_valid:
-            self.operations = valid_operations[0]
+            self.operations = valid_operations
 
     def __str__(self) -> str:
         validity_string = 'O' if self.is_valid else 'X'
@@ -119,9 +120,8 @@ class Problem():
     def _list_values(input_line: InputLine) -> List[int]:
         return [int(num) for num in input_line.replace(':','').split(' ')]
     @staticmethod
-    def _possible_operations(length: int) -> List[Tuple[Operation, ...]]:
-        operations = Operation.ALL()
-        return [combo for combo in list(product(operations, repeat=length))]
+    def _possible_operations(length: int) -> Iterator[Tuple[Operation, ...]]:
+        return product(Operation.ALL(), repeat=length)
     @staticmethod
     def _equation_string(equation: Equation, operations: Operations) -> str:
         equation_string = ""
@@ -131,13 +131,14 @@ class Problem():
             equation_string += f'{e}'
         return equation_string
     @staticmethod
-    def _valid_operations(solution: int, equation: List[int]) -> List[Operations]:
+    def _valid_operations(solution: int, equation: List[int]) -> Operations:
         valid_operations: List[Operations] = []
-        possible_operations = Problem._possible_operations(len(equation)-1)
-        for operation in possible_operations:
+        for operation in Problem._possible_operations(len(equation)-1):
              if solution == eval_l2r(Problem._equation_string(equation,list(operation))):
                  valid_operations.append(list(operation))
-        return valid_operations
+                 break # Early because we need only one, for now.
+        # Return List[Operations] if we need all valid_operation sets.
+        return [] if len(valid_operations) == 0 else valid_operations[0]
 
 # Main Classes
 class Solver():
@@ -149,10 +150,17 @@ class Solver():
         stats: Dict[str,str] = {}
         stats['Progress'] = f'0/{len(input_lines)}'
         create_buffer(stats)
-        for index, input_line in enumerate(input_lines):
-            stats['Progress'] = f'{index}/{len(input_lines)}'
-            show_stats(stats)
-            self.problems.append(Problem(input_line))
+        self.completed_tasks = 0
+        self.lock = Lock()
+        def process_line(input_line: InputLine):
+            problem = Problem(input_line)
+            with self.lock:
+                self.completed_tasks += 1
+                stats['Progress'] = f'{self.completed_tasks}/{len(input_lines)}'
+                show_stats(stats)
+            return problem
+        with ThreadPoolExecutor() as executor:
+            self.problems = list(executor.map(process_line, input_lines))
         remove_buffer(stats)
     def __str__(self) -> str:
         as_string: str = ""
