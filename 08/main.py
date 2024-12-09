@@ -14,9 +14,9 @@ ProgressStatistics: TypeAlias = Dict[str,str]
 
 
 # Exceptions
-class CustomException(Exception):
-    """Define custom exceptions specific to the problem"""
-    pass
+# Decided against Custom Exceptions
+# AoC styled Questions don't need Error Handling
+# As the datasets are already pre-verified, so nothing should go wrong
 
 # Global Constants
 DEFAULT_INPUT: RawInput = """
@@ -99,13 +99,14 @@ class Node:
 
     # Public Methods
     def process(self) -> None:
+        """Set Antinodes for Nodes of same frequency"""
         for node in self.nodes:
             x = Node._offset(self.position[0],node.position[0])
             y = Node._offset(self.position[1],node.position[1])
-            # print(f'Node({self.position[0]},{self.position[1]}) with Node({node.position[0]},{node.position[1]}) has Antinode({x},{y})')
             self.owned_antinodes[(x,y)] = self.value
 
     def boost_process(self, matrix: List[List[Any]]) -> None:
+        """Set Repeating Antinodes for Nodes of same frequency"""
         for node in self.nodes:
             a = node.position[0]                    # 2
             b = node.position[1]                    # 2
@@ -121,6 +122,7 @@ class Node:
     # Private Methods
     @staticmethod
     def _offset(a: int, b: int) -> int:
+        """Calculates offset between two points"""
         return b + (b - a)
 
 # Main Class
@@ -168,10 +170,12 @@ class Solver:
     # Private Methods
     @staticmethod
     def _inactive_node_matrix(raw_input: RawInput) -> NodeMatrix:
+        """Get a Node Matrix with only values being set"""
         return [[Node(value) for value in line] for line in raw_input.splitlines()]
 
     @staticmethod
     def _frequencies(node_matrix: NodeMatrix) -> Frequencies:
+        """Get frequency list in Node Matrix"""
         frequencies: Frequencies = defaultdict(list)
         rows, cols = rows_cols(node_matrix)
         for row, col in product(range(rows),range(cols)):
@@ -181,6 +185,7 @@ class Solver:
 
     @staticmethod
     def _place_nodes(node_matrix: NodeMatrix) -> NodeMatrix:
+        """Set the positions of each node in matrix"""
         rows, cols = rows_cols(node_matrix)
         for row, col in product(range(rows),range(cols)):
             node_matrix[row][col].position = row, col
@@ -188,6 +193,7 @@ class Solver:
 
     @staticmethod
     def _connect_nodes(node_matrix: NodeMatrix, frequencies: Frequencies) -> NodeMatrix:
+        """Connect each node by frequency"""
         rows, cols = rows_cols(node_matrix)
         for row, col in product(range(rows),range(cols)):
             if node_matrix[row][col].value != '.':
@@ -199,6 +205,7 @@ class Solver:
 
     @staticmethod
     def _activate_nodes(node_matrix: NodeMatrix) -> NodeMatrix:
+        """Set Antinodes for Solution 1"""
         rows, cols = rows_cols(node_matrix)
         for row, col in product(range(rows),range(cols)):
             if node_matrix[row][col].value != '.':
@@ -211,6 +218,7 @@ class Solver:
 
     @staticmethod
     def _activate_boosted_nodes(node_matrix: NodeMatrix) -> NodeMatrix:
+        """Set Antinodes for Solution 2"""
         rows, cols = rows_cols(node_matrix)
         for row, col in product(range(rows),range(cols)):
             if node_matrix[row][col].value != '.':
@@ -223,7 +231,7 @@ class Solver:
 
     @staticmethod
     def _process_input(raw_input: RawInput) -> NodeMatrix:
-        """Convert raw input into processed data structures"""
+        """Pipeline for converting raw input into a node matrix"""
         node_matrix: NodeMatrix = Solver._inactive_node_matrix(raw_input)
         node_matrix = Solver._place_nodes(node_matrix)
         frequencies: Frequencies = Solver._frequencies(node_matrix)
